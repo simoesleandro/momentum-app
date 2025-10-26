@@ -2,7 +2,7 @@
 
 Um dashboard de fitness pessoal e interativo para acompanhar treinos, progresso e nutrição, com gamificação e um assistente IA.
 
-![Momentum Dashboard Screenshot](httpshttps://i.imgur.com/vHqgCgU.png)
+![Momentum Dashboard Screenshot](https://user-images.githubusercontent.com/8334033/120281119-995b0a80-c2a4-11eb-9871-330953832709.png)
 
 ## ✨ Funcionalidades Principais
 
