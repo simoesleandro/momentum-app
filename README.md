@@ -22,45 +22,60 @@ Um dashboard de fitness pessoal e interativo para acompanhar treinos, progresso 
   - Múltiplos temas de cores para personalizar a aparência.
   - Gestão de dados (importar/exportar).
 
+## 💡 Principais Alterações Recentes
+
+- **Remoção da Função Serverless:** A comunicação com a API do Gemini foi refatorada para ser feita diretamente no lado do cliente (client-side) utilizando o SDK oficial `@google/genai`. Isto simplifica a arquitetura, melhora a fiabilidade e remove a necessidade de um passo intermédio no servidor.
+
 ## 🛠️ Tecnologias Utilizadas
 
 Este projeto foi construído utilizando as seguintes tecnologias:
 
 - **Frontend:** React, TypeScript, Tailwind CSS
-- **API de IA:** Google Gemini API
+- **API de IA:** Google Gemini API (`@google/genai`)
 - **Gráficos:** Recharts
 - **Ícones:** Font Awesome
 
-## 🚀 Como Executar e Fazer Deploy
+## 🚀 Como Executar Localmente
+
+Como este projeto utiliza módulos ES6 (`import`), ele precisa de ser servido por um servidor web local para funcionar corretamente.
 
 1.  **Clone o repositório:**
     ```bash
     git clone https://github.com/SEU_NOME_DE_USUARIO/momentum-fitness-dashboard.git
     cd momentum-fitness-dashboard
     ```
-
-2.  **Configuração da API (Obrigatório):**
-    - Renomeie o ficheiro `config.js.example` para `config.js`.
-    - Abra `config.js` e insira a sua chave da **API do Google Gemini** no local indicado.
-
-3.  **Para Desenvolvimento Local:**
-    Como este projeto utiliza módulos ES6 (`import`), ele precisa de um servidor local. A forma mais fácil é usando `serve`:
+2.  **Configuração da API:**
+    - A chave da API é gerida através de uma variável de ambiente (`process.env.API_KEY`). Não precisa de criar nenhum ficheiro. O ambiente de desenvolvimento ou a plataforma de deploy (como o AI Studio) injetará esta chave automaticamente.
+3.  **Inicie um servidor local:**
+    A forma mais fácil, sem necessidade de instalar dependências, é usar o `serve`:
     ```bash
     npx serve
     ```
-    Depois, abra o seu browser em `http://localhost:3000`.
-
-4.  **Para Deploy (ex: GitHub Pages):**
-    - Siga os passos de configuração da API acima.
-    - Envie todos os ficheiros para o seu repositório no GitHub.
-    - Ative o GitHub Pages nas configurações do seu repositório.
+4.  **Abra o projeto:**
+    Abra o seu browser no endereço fornecido (geralmente `http://localhost:3000`).
 
 ## ⚠️ Aviso de Segurança: Chave da API
 
-O método utilizado para a chave da API (`config.js`) é simples para fins de demonstração, mas **NÃO É SEGURO para repositórios públicos**.
+A sua chave da API do Google Gemini é um segredo e nunca deve ser exposta publicamente, especialmente em repositórios Git.
 
-- **Risco:** Ao enviar o ficheiro `config.js` com a sua chave para um repositório público no GitHub, a sua chave ficará **visível para qualquer pessoa**, podendo ser usada indevidamente.
-- **Recomendação:** Se o seu repositório for público, use-o apenas para demonstração. Para projetos sérios, utilize um repositório **privado** ou faça o deploy em plataformas como **Vercel** ou **Netlify**, que permitem configurar chaves de API de forma segura como "Environment Variables" (variáveis de ambiente).
+**Forma Correta (Como o projeto está configurado):**
+Utilize variáveis de ambiente. O código acessa a chave com `process.env.API_KEY`. Durante o processo de build (compilação), a plataforma substitui esta variável pela sua chave real. Assim, a chave nunca fica visível no código-fonte que você envia para o GitHub.
+
+```javascript
+// ✅ CORRETO (em services/geminiService.ts)
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+```
+
+**Forma Incorreta (NUNCA FAÇA ISTO):**
+Nunca coloque a sua chave diretamente no código. Se o fizer, qualquer pessoa poderá vê-la e usá-la.
+
+```javascript
+// ❌ INCORRETO E INSEGURO!
+const apiKey = "AIzaSy...SUA_CHAVE_AQUI"; // NÃO FAÇA ISTO!
+const ai = new GoogleGenAI({ apiKey: apiKey });
+```
+
+- **Recomendação:** Ao fazer o deploy em plataformas como Vercel, Netlify ou GitHub Pages, configure a sua chave da API como um "Environment Variable" ou "Secret" nas configurações da plataforma.
 
 ## ✨ Agradecimentos
 
@@ -68,4 +83,4 @@ O método utilizado para a chave da API (`config.js`) é simples para fins de de
 
 ## 📝 Licença
 
-Este projeto está licenciado sob a Licença MIT. Veja o ficheiro [LICENSE](LICENSE) para mais detalhes.
+Este projeto está licenciado sob a Licença MIT.

@@ -36,7 +36,7 @@ const applyTheme = (themeKey: string) => {
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [themeKey, setThemeKey] = useState(() => {
-      const storedThemeKey = localStorage.getItem('themeKey') || 'orange';
+      const storedThemeKey = localStorage.getItem('themeKey') || 'default';
       applyTheme(storedThemeKey); // Apply theme on initial load before React hydrates
       return storedThemeKey;
   });

@@ -40,7 +40,7 @@ const LiveWorkout: React.FC<LiveWorkoutProps> = ({ workout, onFinish }) => {
   if (!currentExercise) {
     return <WorkoutSummary workout={workout} elapsedTime={totalTimer} completedExercises={new Set(feedbackData.keys())} onClose={onFinish} />;
   }
-  const totalSets = parseInt(currentExercise.setsReps.split('x')[0] || '1', 10);
+  const totalSets = currentExercise.sets;
   
   // --- Centralized Timer Management ---
   useEffect(() => {
@@ -275,7 +275,7 @@ const LiveWorkout: React.FC<LiveWorkoutProps> = ({ workout, onFinish }) => {
         <div className="text-center mb-6">
           <h2 className="text-4xl font-bold my-2 text-brand-text dark:text-brand-text-dark">{currentExercise.name}</h2>
           <div className="flex items-center justify-center gap-4 text-lg">
-            <span className="text-brand-primary font-semibold">{currentExercise.setsReps}</span>
+            <span className="text-brand-primary font-semibold">{currentExercise.sets}x{currentExercise.reps}</span>
             <span className="text-brand-subtle">@</span>
             <span className="text-brand-primary font-semibold">{currentExercise.currentLoad.toFixed(1)} kg</span>
           </div>

@@ -9,7 +9,8 @@ type SelectedExercise = {
   id?: string;
   name: string;
   group: string;
-  setsReps: string;
+  sets: number;
+  reps: string;
   currentLoad: number;
 };
 
@@ -40,11 +41,12 @@ const CreateWorkoutPlan: React.FC<CreateWorkoutPlanProps> = ({ onSave, onCancel,
           id: ex.id, 
           name: ex.name, 
           group: ex.group, 
-          setsReps: ex.setsReps, 
+          sets: ex.sets,
+          reps: ex.reps,
           currentLoad: ex.currentLoad 
         })) || []
     );
-  const [exerciseErrors, setExerciseErrors] = useState<Array<{ setsReps?: string; currentLoad?: string }>>([]);
+  const [exerciseErrors, setExerciseErrors] = useState<Array<{ sets?: string; reps?: string; currentLoad?: string }>>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   
@@ -61,7 +63,7 @@ const CreateWorkoutPlan: React.FC<CreateWorkoutPlanProps> = ({ onSave, onCancel,
 
   const handleAddExercise = (exercise: ExerciseDetail, group: string) => {
     if (!selectedExercises.some(e => e.name === exercise.name)) {
-      setSelectedExercises(prev => [...prev, { name: exercise.name, group, setsReps: '3x12', currentLoad: 0 }]);
+      setSelectedExercises(prev => [...prev, { name: exercise.name, group, sets: 3, reps: '12', currentLoad: 0 }]);
     }
   };
 
@@ -70,29 +72,31 @@ const CreateWorkoutPlan: React.FC<CreateWorkoutPlanProps> = ({ onSave, onCancel,
     setExerciseErrors(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleExerciseChange = (index: number, field: 'setsReps' | 'currentLoad', value: string) => {
+  const handleExerciseChange = (index: number, field: 'sets' | 'reps' | 'currentLoad', value: string) => {
     const newExercises = [...selectedExercises];
     const newErrors = [...exerciseErrors];
     if (!newErrors[index]) newErrors[index] = {};
 
     const exerciseToUpdate = { ...newExercises[index] };
     
-    if (field === 'currentLoad') {
-        exerciseToUpdate[field] = parseFloat(value) || 0;
-        const numValue = parseFloat(value);
+    if (field === 'currentLoad' || field === 'sets') {
+        const numValue = field === 'sets' ? parseInt(value, 10) : parseFloat(value);
+        exerciseToUpdate[field] = isNaN(numValue) ? 0 : numValue;
+        
         if (value.trim() !== '' && (isNaN(numValue) || numValue < 0)) {
-            newErrors[index].currentLoad = 'Inválido';
-        } else {
-            delete newErrors[index].currentLoad;
+            newErrors[index][field] = 'Inválido';
+        } else if (field === 'sets' && numValue <= 0) {
+            newErrors[index][field] = '> 0';
         }
-    } else { // setsReps
+        else {
+            delete newErrors[index][field];
+        }
+    } else { // reps
         exerciseToUpdate[field] = value;
          if (!value.trim()) {
-            newErrors[index].setsReps = 'Obrigatório';
-        } else if (!/^\d+x[\d-]+$/.test(value)) {
-            newErrors[index].setsReps = 'Ex: 3x12';
+            newErrors[index].reps = 'Obrigatório';
         } else {
-            delete newErrors[index].setsReps;
+            delete newErrors[index].reps;
         }
     }
     
@@ -111,8 +115,7 @@ const CreateWorkoutPlan: React.FC<CreateWorkoutPlanProps> = ({ onSave, onCancel,
     }
   };
 
-  // FIX: Explicitly type `filteredLibrary` to fix type inference issue with `useMemo`.
-  const filteredLibrary: { [group: string]: ExerciseDetail[] } = useMemo(() => {
+  const filteredLibrary = useMemo(() => {
     if (!debouncedSearchTerm) {
       return EXERCISE_LIBRARY;
     }
@@ -132,7 +135,7 @@ const CreateWorkoutPlan: React.FC<CreateWorkoutPlanProps> = ({ onSave, onCancel,
 
   const hasErrors = useMemo(() => {
     if (workoutNameError) return true;
-    return exerciseErrors.some(e => e && (e.setsReps || e.currentLoad));
+    return exerciseErrors.some(e => e && (e.sets || e.reps || e.currentLoad));
   }, [workoutNameError, exerciseErrors]);
 
   const handleSave = () => {
@@ -211,20 +214,24 @@ const CreateWorkoutPlan: React.FC<CreateWorkoutPlanProps> = ({ onSave, onCancel,
             />
             <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-2">
             {Object.keys(filteredLibrary).length > 0 ? (
-                Object.entries(filteredLibrary).map(([group, exercises]) => (
-                    <Card key={group} title={group}>
-                        <div className="space-y-2">
-                        {exercises.map(ex => (
-                            <div key={ex.name} className="flex justify-between items-center p-2 bg-brand-background rounded-md">
-                                <span className="font-medium">{ex.name}</span>
-                                <button onClick={() => handleAddExercise(ex, group)} className="text-brand-primary hover:text-brand-secondary text-2xl">
-                                    <i className="fas fa-plus-circle"></i>
-                                </button>
+                // FIX: Use Object.keys and explicit lookup to help TypeScript infer the correct type for `exercises`.
+                Object.keys(filteredLibrary).map((group) => {
+                    const exercises = filteredLibrary[group];
+                    return (
+                        <Card key={group} title={group}>
+                            <div className="space-y-2">
+                            {exercises.map(ex => (
+                                <div key={ex.name} className="flex justify-between items-center p-2 bg-brand-background rounded-md">
+                                    <span className="font-medium">{ex.name}</span>
+                                    <button onClick={() => handleAddExercise(ex, group)} className="text-brand-primary hover:text-brand-secondary text-2xl">
+                                        <i className="fas fa-plus-circle"></i>
+                                    </button>
+                                </div>
+                            ))}
                             </div>
-                        ))}
-                        </div>
-                    </Card>
-                ))
+                        </Card>
+                    );
+                })
             ) : (
                 <div className="text-center py-10 text-brand-subtle">
                     <i className="fas fa-search text-3xl mb-3"></i>
@@ -288,18 +295,31 @@ const CreateWorkoutPlan: React.FC<CreateWorkoutPlanProps> = ({ onSave, onCancel,
                                         <i className="fas fa-trash-alt"></i>
                                     </button>
                                 </div>
-                                <div className="flex items-start gap-2 pl-6 w-full">
+                                <div className="grid grid-cols-3 items-start gap-2 pl-6 w-full">
                                     <div className="flex-1">
+                                        <label className="text-xs text-brand-subtle block text-center mb-1">Séries</label>
                                         <input
-                                            type="text"
-                                            value={ex.setsReps}
-                                            onChange={e => handleExerciseChange(index, 'setsReps', e.target.value)}
-                                            className={`w-full bg-white text-center p-1 rounded-md border focus:outline-none focus:ring-2 ${exerciseErrors[index]?.setsReps ? 'border-red-500 ring-red-500' : 'border-gray-300 focus:ring-brand-primary'}`}
-                                            placeholder="Séries/Reps"
+                                            type="number"
+                                            value={ex.sets}
+                                            onChange={e => handleExerciseChange(index, 'sets', e.target.value)}
+                                            className={`w-full bg-white text-center p-1 rounded-md border focus:outline-none focus:ring-2 ${exerciseErrors[index]?.sets ? 'border-red-500 ring-red-500' : 'border-gray-300 focus:ring-brand-primary'}`}
+                                            placeholder="Séries"
                                         />
-                                        {exerciseErrors[index]?.setsReps && <p className="text-red-500 text-xs mt-1">{exerciseErrors[index].setsReps}</p>}
+                                        {exerciseErrors[index]?.sets && <p className="text-red-500 text-xs mt-1 text-center">{exerciseErrors[index].sets}</p>}
                                     </div>
                                     <div className="flex-1">
+                                        <label className="text-xs text-brand-subtle block text-center mb-1">Reps</label>
+                                        <input
+                                            type="text"
+                                            value={ex.reps}
+                                            onChange={e => handleExerciseChange(index, 'reps', e.target.value)}
+                                            className={`w-full bg-white text-center p-1 rounded-md border focus:outline-none focus:ring-2 ${exerciseErrors[index]?.reps ? 'border-red-500 ring-red-500' : 'border-gray-300 focus:ring-brand-primary'}`}
+                                            placeholder="Ex: 10-12"
+                                        />
+                                        {exerciseErrors[index]?.reps && <p className="text-red-500 text-xs mt-1 text-center">{exerciseErrors[index].reps}</p>}
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="text-xs text-brand-subtle block text-center mb-1">Carga (kg)</label>
                                         <input
                                             type="number"
                                             value={ex.currentLoad}
@@ -307,7 +327,7 @@ const CreateWorkoutPlan: React.FC<CreateWorkoutPlanProps> = ({ onSave, onCancel,
                                             className={`w-full bg-white text-center p-1 rounded-md border focus:outline-none focus:ring-2 ${exerciseErrors[index]?.currentLoad ? 'border-red-500 ring-red-500' : 'border-gray-300 focus:ring-brand-primary'}`}
                                             placeholder="Carga (kg)"
                                         />
-                                        {exerciseErrors[index]?.currentLoad && <p className="text-red-500 text-xs mt-1">{exerciseErrors[index].currentLoad}</p>}
+                                        {exerciseErrors[index]?.currentLoad && <p className="text-red-500 text-xs mt-1 text-center">{exerciseErrors[index].currentLoad}</p>}
                                     </div>
                                 </div>
                             </div>

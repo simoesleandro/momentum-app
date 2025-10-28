@@ -7,6 +7,7 @@ import type { Page } from '../types';
 import { NUTRITION_TIPS } from '../constants';
 import FloatingActionButton from '../components/FloatingActionButton';
 import LogWeightModal from '../components/LogWeightModal';
+import Logo from '../components/Logo';
 
 const motivationalQuotes = [
   "Hoje é um ótimo dia para conquistar mais um treino!",
@@ -118,13 +119,14 @@ interface HomeProps {
 }
 
 const Home: React.FC<HomeProps> = ({ setCurrentPage }) => {
-  const { data, getCurrentWeight, getFormattedWeightLog, getWeeklySummary, getLatestWeightEntries, getPreviousWeekSummary, calculateStreak, getRecentAchievements, getTodayWaterIntake, addWaterIntake } = useUserData();
+  const { data, getCurrentWeight, getFormattedWeightLog, getWeeklySummary, getLatestWeightEntries, getPreviousWeekSummary, calculateStreak, getRecentAchievements, getTodayWaterIntake, addWaterIntake, getWeeklyWaterIntake } = useUserData();
   const currentWeight = getCurrentWeight();
   const [isMilestoneVisible, setIsMilestoneVisible] = useState(false);
   const [weightTimeframe, setWeightTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
   const [isLogWeightModalOpen, setIsLogWeightModalOpen] = useState(false);
   
   const todayWaterIntake = getTodayWaterIntake();
+  const weeklyWaterData = getWeeklyWaterIntake();
 
   const kgToGoal = data.goalWeight - currentWeight;
   const goalIsToLose = data.initialWeight > data.goalWeight;
@@ -204,22 +206,37 @@ const Home: React.FC<HomeProps> = ({ setCurrentPage }) => {
   const weeklyActivityData = useMemo(() => {
     const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     const today = new Date();
-    const result = days.map((day, i) => ({ day, treinos: 0 }));
+    today.setHours(0, 0, 0, 0);
 
-    for(let i=0; i<7; i++){
-        const d = new Date();
-        d.setDate(today.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        if (data.attendance.includes(dateStr)) {
-            result[d.getDay()].treinos += 1;
-        }
+    // Find Sunday of the current week
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    
+    const result = [];
+    for (let i = 0; i < 7; i++) {
+        const currentDay = new Date(startOfWeek);
+        currentDay.setDate(startOfWeek.getDate() + i);
+        const dateStr = currentDay.toISOString().split('T')[0];
+
+        const treinos = data.attendance.includes(dateStr) ? 1 : 0;
+        
+        result.push({
+            day: days[i],
+            treinos,
+        });
     }
+
     return result;
   }, [data.attendance]);
   
   const weeklyComparison = useMemo(() => {
     const prevWeek = getPreviousWeekSummary();
-    if (prevWeek.minutesTrained === 0) return { diff: weeklySummary.minutesTrained, trend: 'up' as const};
+    if (prevWeek.minutesTrained === 0) {
+      if (weeklySummary.minutesTrained > 0) {
+        return { diff: weeklySummary.minutesTrained, trend: 'up' as const};
+      }
+      return { diff: 0, trend: 'same' as const};
+    }
     const diff = weeklySummary.minutesTrained - prevWeek.minutesTrained;
     const trend = diff > 0 ? 'up' : (diff < 0 ? 'down' : 'same');
     return { diff, trend };
@@ -239,12 +256,17 @@ const Home: React.FC<HomeProps> = ({ setCurrentPage }) => {
           animation: fadeIn 0.5s ease-out forwards;
         }
       `}</style>
-      <header className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-brand-text dark:text-brand-text-dark">Bem-vinda, {data.userName.split(' ')[0]}!</h1>
-          <p className="text-md text-brand-subtle">{dailyQuote}</p>
+      <header className="relative flex justify-center sm:justify-between items-center pt-14 sm:pt-0">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <Logo className="w-16 h-16 text-brand-primary order-1 sm:order-none" />
+          <div className="order-2 sm:order-none text-center sm:text-left">
+            <h1 className="text-3xl md:text-4xl font-bold text-brand-text dark:text-brand-text-dark">Bem-vinda, {data.userName.split(' ')[0]}!</h1>
+            <p className="text-md text-brand-subtle">{dailyQuote}</p>
+          </div>
         </div>
-        <ThemeToggle />
+        <div className="absolute top-0 right-0">
+          <ThemeToggle />
+        </div>
       </header>
       
       {isMilestoneVisible && (
@@ -281,6 +303,22 @@ const Home: React.FC<HomeProps> = ({ setCurrentPage }) => {
                   <button onClick={() => addWaterIntake(-0.25)} className="w-10 h-10 bg-brand-primary/10 rounded-full text-brand-primary font-bold">-</button>
                   <button onClick={() => addWaterIntake(0.25)} className="w-10 h-10 bg-brand-primary/10 rounded-full text-brand-primary font-bold">+</button>
               </div>
+              <div className="w-full h-24 mt-4 -ml-4">
+                <ResponsiveContainer>
+                  <BarChart data={weeklyWaterData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <XAxis dataKey="day" axisLine={false} tickLine={false} className="text-xs" stroke="currentColor" />
+                    <Tooltip 
+                      cursor={{ fill: 'rgba(124, 58, 237, 0.1)' }}
+                      contentStyle={{ backgroundColor: 'var(--brand-surface)', border: '1px solid #e5e7eb', borderRadius: '0.5rem' }} 
+                      wrapperClassName="rounded-md shadow-lg dark:!bg-brand-surface-dark dark:!border-gray-700"
+                      formatter={(value: number) => [`${value.toFixed(2)} L`, null]}
+                      labelFormatter={() => ''}
+                    />
+                    <ReferenceLine y={data.waterGoal} stroke="var(--brand-primary)" strokeDasharray="3 3" />
+                    <Bar dataKey="consumed" fill="var(--brand-primary-light)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
         </Card>
         <Card title="Dica Nutricional do Dia" icon={<i className="fas fa-lightbulb"></i>}>
@@ -296,7 +334,7 @@ const Home: React.FC<HomeProps> = ({ setCurrentPage }) => {
             <div className="space-y-3">
                  <div className="flex justify-between items-center">
                     <p><strong>Tempo:</strong> {weeklySummary.minutesTrained} min</p>
-                    {weeklyComparison.trend !== 'same' && (
+                    {weeklyComparison.trend !== 'same' && weeklySummary.minutesTrained > 0 && (
                         <span className={`text-xs font-bold flex items-center gap-1 ${weeklyComparison.trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
                            <i className={`fas fa-arrow-${weeklyComparison.trend}`}></i> {Math.abs(weeklyComparison.diff)} min
                         </span>
@@ -309,6 +347,7 @@ const Home: React.FC<HomeProps> = ({ setCurrentPage }) => {
                     <ResponsiveContainer>
                         <BarChart data={weeklyActivityData}>
                             <XAxis dataKey="day" axisLine={false} tickLine={false} className="text-xs" stroke="currentColor"/>
+                            <Tooltip cursor={{fill: 'rgba(124, 58, 237, 0.1)'}} contentStyle={{display: 'none'}} />
                             <Bar dataKey="treinos" fill="var(--brand-primary-light)" radius={[4, 4, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>

@@ -1,51 +1,62 @@
 import type { AppData } from './types';
 
-const today = new Date();
-const formatDate = (d: Date) => d.toISOString().split('T')[0];
-
-const createInitialSchedule = () => {
-  const schedule: { [key: string]: string } = {};
-  const d = new Date();
-  
-  // Monday of the current week
-  d.setDate(d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1));
-  schedule[formatDate(d)] = 'A';
-  
-  // Tuesday
-  d.setDate(d.getDate() + 1);
-  schedule[formatDate(d)] = 'B';
-  
-  // Wednesday
-  d.setDate(d.getDate() + 1);
-  schedule[formatDate(d)] = 'C';
-  
-  // Thursday
-  d.setDate(d.getDate() + 1);
-  schedule[formatDate(d)] = 'A';
-
-  // Friday
-  d.setDate(d.getDate() + 1);
-  schedule[formatDate(d)] = 'B';
-  
-  return schedule;
-};
-
-
 export const INITIAL_USER_DATA: AppData = {
-  userName: 'Marta Miranda Simões',
-  profilePictureUrl: 'https://ui-avatars.com/api/?name=Marta+Simões&background=7c3aed&color=fff&size=128',
-  height: 1.67,
+  userName: 'Atleta',
+  profilePictureUrl: 'https://ui-avatars.com/api/?name=A&background=7c3aed&color=fff&size=128',
+  height: 1.65,
   goalWeight: 60.0,
-  initialWeight: 57.0,
+  initialWeight: 65.0,
   level: 1,
   xp: 0,
-  weightLog: [{ date: '2024-01-01', weight: 57.0 }, { date: '2024-01-08', weight: 56.5 }],
+  workouts: [
+    {
+      id: 'A',
+      name: '🔥 Treino A - Inferiores (Foco Quadríceps & Glúteos)',
+      intensity: 4,
+      exercises: [
+        { id: 'a1', name: 'Agachamento na Máquina Smith', group: 'Quadríceps', sets: 4, reps: '10', currentLoad: 0, loadHistory: [] },
+        { id: 'a2', name: 'Leg Press 45', group: 'Quadríceps', sets: 3, reps: '12', currentLoad: 0, loadHistory: [] },
+        { id: 'a3', name: 'Cadeira Extensora', group: 'Quadríceps', sets: 3, reps: '15', currentLoad: 0, loadHistory: [] },
+        { id: 'a4', name: 'Hip Thrust (Elevação Pélvica)', group: 'Glúteos', sets: 4, reps: '12', currentLoad: 0, loadHistory: [] },
+        { id: 'a5', name: 'Stiff (Levantamento Terra Romeno)', group: 'Posteriores', sets: 3, reps: '12', currentLoad: 0, loadHistory: [] },
+        { id: 'a6', name: 'Cadeira Abdutora', group: 'Glúteos', sets: 3, reps: '15', currentLoad: 0, loadHistory: [] },
+        { id: 'a7', name: 'Panturrilha em pé', group: 'Panturrilha', sets: 4, reps: '20', currentLoad: 0, loadHistory: [] }
+      ]
+    },
+    {
+      id: 'B',
+      name: '🔥 Treino B - Superiores (Foco Costas & Ombros)',
+      intensity: 3,
+      exercises: [
+        { id: 'b1', name: 'Puxada Frontal', group: 'Costas', sets: 4, reps: '10', currentLoad: 0, loadHistory: [] },
+        { id: 'b2', name: 'Remada Curvada', group: 'Costas', sets: 3, reps: '12', currentLoad: 0, loadHistory: [] },
+        { id: 'b3', name: 'Desenvolvimento com Halteres', group: 'Ombros', sets: 4, reps: '10', currentLoad: 0, loadHistory: [] },
+        { id: 'b4', name: 'Elevação Lateral', group: 'Ombros', sets: 3, reps: '15', currentLoad: 0, loadHistory: [] },
+        { id: 'b5', name: 'Rosca Direta', group: 'Bíceps', sets: 3, reps: '12', currentLoad: 0, loadHistory: [] },
+        { id: 'b6', name: 'Tríceps Corda', group: 'Tríceps', sets: 3, reps: '12', currentLoad: 0, loadHistory: [] }
+      ]
+    },
+    {
+      id: 'C',
+      name: '🔥 Treino C - Inferiores (Foco Posteriores & Glúteos)',
+      intensity: 4,
+      exercises: [
+        { id: 'c1', name: 'Stiff (Levantamento Terra Romeno)', group: 'Posteriores', sets: 4, reps: '10', currentLoad: 0, loadHistory: [] },
+        { id: 'c2', name: 'Mesa Flexora (Flexora Deitada)', group: 'Posteriores', sets: 3, reps: '12', currentLoad: 0, loadHistory: [] },
+        { id: 'c3', name: 'Agachamento Búlgaro', group: 'Glúteos', sets: 3, reps: '12', currentLoad: 0, loadHistory: [] },
+        { id: 'c4', name: 'Hip Thrust (Elevação Pélvica)', group: 'Glúteos', sets: 4, reps: '15', currentLoad: 0, loadHistory: [] },
+        { id: 'c5', name: 'Cadeira Adutora', group: 'Adutores', sets: 3, reps: '15', currentLoad: 0, loadHistory: [] },
+        { id: 'c6', name: 'Panturrilha sentado', group: 'Panturrilha', sets: 4, reps: '20', currentLoad: 0, loadHistory: [] }
+      ]
+    }
+  ],
+  weightLog: [],
   waterIntakeLog: [],
   waterGoal: 2.5,
   attendance: [],
   bodyMeasurements: [],
   progressPhotos: [],
-  calendarSchedule: createInitialSchedule(),
+  calendarSchedule: {},
   unlockedAchievements: [],
   nutritionChatHistory: [],
   settings: {
@@ -54,45 +65,6 @@ export const INITIAL_USER_DATA: AppData = {
       workoutReminders: true,
     },
   },
-  workouts: [
-    {
-      id: 'A',
-      name: '🔥 TREINO A – Quadríceps (Foco Máximo)',
-      intensity: 5,
-      exercises: [
-        { id: 'a1', name: 'Agachamento Livre Profundo', group: 'Quadríceps', setsReps: '5x5-6', currentLoad: 0, loadHistory: [] },
-        { id: 'a2', name: 'Afundo / Passada Frontal com Halteres', group: 'Quadríceps', setsReps: '4x10-12', currentLoad: 0, loadHistory: [] },
-        { id: 'a3', name: 'Step-up em Banco com Halteres', group: 'Quadríceps', setsReps: '3x12', currentLoad: 0, loadHistory: [] },
-        { id: 'a4', name: 'Cadeira Extensora', group: 'Quadríceps', setsReps: '3x12-15', currentLoad: 0, loadHistory: [] },
-        { id: 'a5', name: 'Cadeira Adutora', group: 'Adutores', setsReps: '3x15-20', currentLoad: 0, loadHistory: [] },
-      ],
-    },
-    {
-      id: 'B',
-      name: '🔥 TREINO B – Posterior + Glúteos + Panturrilha',
-      intensity: 5,
-      exercises: [
-        { id: 'b1', name: 'Stiff (Levantamento Terra Romeno)', group: 'Posteriores', setsReps: '4x6-8', currentLoad: 0, loadHistory: [] },
-        { id: 'b2', name: 'Hip Thrust (Elevação Pélvica)', group: 'Glúteos', setsReps: '4x8-10', currentLoad: 0, loadHistory: [] },
-        { id: 'b3', name: 'Agachamento Búlgaro', group: 'Glúteos', setsReps: '3x10-12', currentLoad: 0, loadHistory: [] },
-        { id: 'b4', name: 'Mesa Flexora (Flexora Deitada)', group: 'Posteriores', setsReps: '4x10-12', currentLoad: 0, loadHistory: [] },
-        { id: 'b5', name: 'Cadeira Abdutora', group: 'Glúteos', setsReps: '3x15-20', currentLoad: 0, loadHistory: [] },
-        { id: 'b6', name: 'Panturrilha sentado', group: 'Panturrilha', setsReps: '4x15-20', currentLoad: 0, loadHistory: [] },
-      ],
-    },
-    {
-      id: 'C',
-      name: '🔥 TREINO C – Superiores (Enxuto)',
-      intensity: 4,
-      exercises: [
-        { id: 'c1', name: 'Supino Reto com Barra', group: 'Peito', setsReps: '4x6-8', currentLoad: 0, loadHistory: [] },
-        { id: 'c2', name: 'Remada Curvada', group: 'Costas', setsReps: '4x8-10', currentLoad: 0, loadHistory: [] },
-        { id: 'c3', name: 'Elevação Lateral', group: 'Ombros', setsReps: '3x10-12', currentLoad: 0, loadHistory: [] },
-        { id: 'c4', name: 'Rosca Direta', group: 'Bíceps', setsReps: '3x8-10', currentLoad: 0, loadHistory: [] },
-        { id: 'c5', name: 'Tríceps Corda', group: 'Tríceps', setsReps: '3x10-12', currentLoad: 0, loadHistory: [] },
-      ],
-    },
-  ],
 };
 
 export const EXERCISE_ALTERNATIVES: { [key: string]: string[] } = {

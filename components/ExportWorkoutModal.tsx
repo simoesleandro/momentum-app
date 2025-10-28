@@ -37,7 +37,7 @@ const ExportWorkoutModal: React.FC<ExportWorkoutModalProps> = ({ workout, onClos
       content += `** ${group.toUpperCase()} **\n\n`;
       exercises.forEach(ex => {
         content += `${ex.name}\n`;
-        content += `  - Séries/Reps: ${ex.setsReps}\n`;
+        content += `  - Séries/Reps: ${ex.sets}x${ex.reps}\n`;
         content += `  - Carga Atual: ${ex.currentLoad.toFixed(1)} kg\n\n`;
       });
     });
@@ -207,7 +207,7 @@ const ExportWorkoutModal: React.FC<ExportWorkoutModalProps> = ({ workout, onClos
           <div class="exercise-card">
             <div class="exercise-details">
               <strong>${ex.name}</strong>
-              <p>Séries/Reps: <span>${ex.setsReps}</span></p>
+              <p>Séries/Reps: <span>${ex.sets}x${ex.reps}</span></p>
               <p>Carga Atual: <span>${ex.currentLoad.toFixed(1)} kg</span></p>
             </div>
             ${detail ? `

@@ -6,7 +6,8 @@ export interface Exercise {
   id: string;
   name: string;
   group: string;
-  setsReps: string;
+  sets: number;
+  reps: string;
   currentLoad: number;
   loadHistory: { date: string; load: number }[];
 }
@@ -108,6 +109,7 @@ export interface WeeklySummary {
 export interface UserDataContextType {
   data: AppData;
   loading: boolean;
+  initializeUser: (details: { userName: string; height: number; initialWeight: number; goalWeight: number }) => void;
   addXP: (amount: number) => void;
   addWeightEntry: (weight: number) => void;
   updateExerciseLoad: (workoutId: string, exerciseId: string, newLoad: number) => void;
@@ -117,8 +119,8 @@ export interface UserDataContextType {
   addProgressPhoto: (photoData: { photoUrl: string; notes?: string }) => void;
   updateProgressPhoto: (photoId: string, updatedData: { photoUrl?: string; notes?: string }) => void;
   deleteProgressPhoto: (photoId: string) => void;
-  addWorkout: (workout: { name: string; intensity: number; exercises: { name: string; group: string; setsReps: string }[] }) => void;
-  updateWorkout: (workout: { id: string; name: string; intensity: number; exercises: { id?: string; name: string; group: string; setsReps: string; currentLoad: number }[] }) => void;
+  addWorkout: (workout: { name: string; intensity: number; exercises: { name: string; group: string; sets: number; reps: string }[] }) => void;
+  updateWorkout: (workout: { id: string; name: string; intensity: number; exercises: { id?: string; name: string; group: string; sets: number; reps: string; currentLoad: number }[] }) => void;
   deleteWorkout: (workoutId: string) => void;
   updateCalendarDate: (date: string, workoutId: string | null) => void;
   getCurrentWeight: () => number;
@@ -140,6 +142,7 @@ export interface UserDataContextType {
   getRecentAchievements: (count: number) => Achievement[];
   addWaterIntake: (amount: number) => void;
   getTodayWaterIntake: () => WaterIntakeLog;
+  getWeeklyWaterIntake: () => { day: string; consumed: number }[];
   isStreakAtRisk: () => boolean;
   newlyUnlockedAchievement: Achievement | null;
   clearNewlyUnlockedAchievement: () => void;

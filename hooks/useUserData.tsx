@@ -5,7 +5,9 @@ import { ACHIEVEMENTS, Achievement, getXPForNextLevel } from '../data/gamificati
 
 const UserDataContext = createContext<UserDataContextType | undefined>(undefined);
 
-export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const STORAGE_KEY = 'fitnessAppUsers';
+
+export const UserDataProvider: React.FC<{ children: React.ReactNode; username: string }> = ({ children, username }) => {
   const [data, setData] = useState<AppData>(INITIAL_USER_DATA);
   const [loading, setLoading] = useState(true);
   const [newlyUnlockedAchievement, setNewlyUnlockedAchievement] = useState<Achievement | null>(null);
@@ -42,57 +44,67 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   useEffect(() => {
     try {
-      const storedData = localStorage.getItem('fitnessDashboardData');
-      if (storedData) {
-        let parsedData = JSON.parse(storedData);
-        
-        if (!parsedData.calendarSchedule) {
-          parsedData.calendarSchedule = INITIAL_USER_DATA.calendarSchedule;
-        }
-        if (!parsedData.unlockedAchievements) {
-          parsedData.unlockedAchievements = [];
-        }
-        if (!parsedData.settings) {
-            parsedData.settings = INITIAL_USER_DATA.settings;
-        }
-        if (typeof parsedData.level !== 'number') {
-            parsedData.level = 1;
-        }
-        if (typeof parsedData.xp !== 'number') {
-            parsedData.xp = 0;
-        }
-        if (!Array.isArray(parsedData.nutritionChatHistory)) {
-            parsedData.nutritionChatHistory = [];
-        }
-         if (!parsedData.waterIntakeLog) {
-          parsedData.waterIntakeLog = [];
-        }
-        if (!parsedData.waterGoal) {
-          parsedData.waterGoal = 2.5;
-        }
+      const allUsersData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      const currentUserData = allUsersData[username]?.userData;
+
+      if (currentUserData) {
+        // Ensure data integrity of loaded data
+        let parsedData = currentUserData;
+        if (!parsedData.calendarSchedule) parsedData.calendarSchedule = INITIAL_USER_DATA.calendarSchedule;
+        if (!parsedData.unlockedAchievements) parsedData.unlockedAchievements = [];
+        if (!parsedData.settings) parsedData.settings = INITIAL_USER_DATA.settings;
+        if (typeof parsedData.level !== 'number') parsedData.level = 1;
+        if (typeof parsedData.xp !== 'number') parsedData.xp = 0;
+        if (!Array.isArray(parsedData.nutritionChatHistory)) parsedData.nutritionChatHistory = [];
+        if (!parsedData.waterIntakeLog) parsedData.waterIntakeLog = [];
+        if (!parsedData.waterGoal) parsedData.waterGoal = 2.5;
 
         setData(checkAndUnlockAchievements(parsedData));
-      } else {
-        setData(checkAndUnlockAchievements(INITIAL_USER_DATA));
       }
     } catch (error) {
-      console.error("Failed to load data from localStorage", error);
+      console.error("Failed to load user data from localStorage", error);
       setData(INITIAL_USER_DATA);
     } finally {
       setLoading(false);
     }
-  }, [checkAndUnlockAchievements]);
+  }, [checkAndUnlockAchievements, username]);
+
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && localStorage.getItem('hasCompletedOnboarding') === 'true') {
       try {
-        localStorage.setItem('fitnessDashboardData', JSON.stringify(data));
+        const allUsersData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        // Ensure user structure exists before saving
+        if (!allUsersData[username]) {
+            allUsersData[username] = {};
+        }
+        allUsersData[username].userData = data;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(allUsersData));
       } catch (error) {
         console.error("Failed to save data to localStorage", error);
       }
     }
-  }, [data, loading]);
+  }, [data, loading, username]);
   
+  const initializeUser = useCallback((details: { userName: string; height: number; initialWeight: number; goalWeight: number }) => {
+    const today = new Date().toISOString().split('T')[0];
+    const firstLetter = details.userName ? details.userName[0].toUpperCase() : 'A';
+
+    const newUserData: AppData = {
+        ...INITIAL_USER_DATA,
+        userName: details.userName,
+        height: details.height,
+        initialWeight: details.initialWeight,
+        goalWeight: details.goalWeight,
+        profilePictureUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(firstLetter)}&background=7c3aed&color=fff&size=128`,
+        weightLog: [{ date: today, weight: details.initialWeight }]
+    };
+    
+    const finalData = checkAndUnlockAchievements(newUserData);
+    setData(finalData);
+    setLoading(false);
+  }, [checkAndUnlockAchievements]);
+
   const addXP = useCallback((amount: number) => {
     setData(prevData => {
         let newXP = prevData.xp + amount;
@@ -147,6 +159,26 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const today = new Date().toISOString().split('T')[0];
     const todayEntry = data.waterIntakeLog.find(entry => entry.date === today);
     return todayEntry || { date: today, amount: 0 };
+  }, [data.waterIntakeLog]);
+
+  const getWeeklyWaterIntake = useCallback((): { day: string; consumed: number }[] => {
+    const today = new Date();
+    const weekData = [];
+    const daysOfWeek = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        const dayName = daysOfWeek[d.getDay()];
+
+        const entry = data.waterIntakeLog.find(log => log.date === dateStr);
+        weekData.push({
+            day: dayName,
+            consumed: entry ? entry.amount : 0,
+        });
+    }
+    return weekData;
   }, [data.waterIntakeLog]);
 
   const isStreakAtRisk = useCallback((): boolean => {
@@ -275,7 +307,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   }, []);
   
-  const addWorkout = useCallback((workoutData: { name: string; intensity: number; exercises: { name: string; group: string; setsReps: string }[] }) => {
+  const addWorkout = useCallback((workoutData: { name: string; intensity: number; exercises: { name: string; group: string; sets: number; reps: string }[] }) => {
     setData(prevData => {
       const existingIds = prevData.workouts.map(w => w.id);
       const lastId = existingIds.length > 0 ? existingIds.sort().pop()! : '@';
@@ -302,7 +334,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     });
   }, [checkAndUnlockAchievements, addXP]);
 
-  const updateWorkout = useCallback((workoutData: { id: string; name: string; intensity: number; exercises: { id?: string; name: string; group: string; setsReps: string; currentLoad: number }[] }) => {
+  const updateWorkout = useCallback((workoutData: { id: string; name: string; intensity: number; exercises: { id?: string; name: string; group: string; sets: number; reps: string; currentLoad: number }[] }) => {
     const today = new Date().toISOString().split('T')[0];
     setData(prevData => {
       const workoutIndex = prevData.workouts.findIndex(w => w.id === workoutData.id);
@@ -310,7 +342,8 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       const originalWorkout = prevData.workouts[workoutIndex];
       
-      const updatedExercises = workoutData.exercises.map((exData, index) => {
+      // FIX: Explicitly type `updatedExercises` and the `map` callback return to fix type inference issue.
+      const updatedExercises: Exercise[] = workoutData.exercises.map((exData, index): Exercise => {
         const originalExercise = exData.id ? originalWorkout.exercises.find(ex => ex.id === exData.id) : undefined;
         
         if (originalExercise) {
@@ -323,7 +356,8 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             ...originalExercise,
             name: exData.name,
             group: exData.group,
-            setsReps: exData.setsReps,
+            sets: exData.sets,
+            reps: exData.reps,
             currentLoad: exData.currentLoad,
             loadHistory: newHistory,
           };
@@ -332,7 +366,8 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             id: `${workoutData.id.toLowerCase()}${Date.now()}${index}`,
             name: exData.name,
             group: exData.group,
-            setsReps: exData.setsReps,
+            sets: exData.sets,
+            reps: exData.reps,
             currentLoad: exData.currentLoad,
             loadHistory: exData.currentLoad > 0 ? [{ date: today, load: exData.currentLoad }] : [],
           };
@@ -412,17 +447,18 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     )}`;
     const link = document.createElement("a");
     link.href = jsonString;
-    link.download = `martas_dashboard_backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `${username}_dashboard_backup_${new Date().toISOString().split('T')[0]}.json`;
     link.click();
-  }, [data]);
+  }, [data, username]);
 
   const importData = useCallback((jsonString: string) => {
     try {
       const importedData = JSON.parse(jsonString);
+      // Basic validation for imported user data
       if (importedData.userName && Array.isArray(importedData.workouts)) {
         setData(importedData);
       } else {
-        throw new Error("Invalid data format");
+        throw new Error("Invalid user data format");
       }
     } catch (error) {
       console.error("Failed to import data:", error);
@@ -432,6 +468,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const resetData = useCallback(() => {
     setData(INITIAL_USER_DATA);
+    localStorage.removeItem('hasCompletedOnboarding');
   }, []);
 
   const getCurrentWeight = useCallback(() => {
@@ -440,10 +477,12 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [data.weightLog, data.initialWeight]);
   
   const getFormattedWeightLog = useCallback(() => {
-      return data.weightLog.map(entry => ({
-          date: new Date(entry.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-          peso: entry.weight
-      })).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      return [...data.weightLog]
+        .sort((a, b) => new Date(`${a.date}T00:00:00`).getTime() - new Date(`${b.date}T00:00:00`).getTime())
+        .map(entry => ({
+            date: new Date(`${entry.date}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+            peso: entry.weight
+        }));
   }, [data.weightLog]);
   
   const getExerciseLoadHistory = useCallback((workoutId: string, exerciseId: string) => {
@@ -452,17 +491,20 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const exercise = workout.exercises.find(e => e.id === exerciseId);
     if (!exercise) return [];
     
-    return exercise.loadHistory.map(h => ({
-      date: new Date(h.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+    return [...exercise.loadHistory]
+      .sort((a, b) => new Date(`${a.date}T00:00:00`).getTime() - new Date(`${b.date}T00:00:00`).getTime())
+      .map(h => ({
+      date: new Date(`${h.date}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
       carga: h.load,
-    })).sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    }));
   }, [data.workouts]);
 
   const getFormattedBodyMeasurements = useCallback(() => {
-    return data.bodyMeasurements
+    return [...data.bodyMeasurements]
+      .sort((a, b) => new Date(`${a.date}T00:00:00`).getTime() - new Date(`${b.date}T00:00:00`).getTime())
       .map(entry => {
         const formattedEntry: { date: string; [key: string]: number | string } = {
-          date: new Date(entry.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+          date: new Date(`${entry.date}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
         };
         if (entry.waist) formattedEntry['Cintura'] = entry.waist;
         if (entry.hips) formattedEntry['Quadril'] = entry.hips;
@@ -470,8 +512,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (entry.arms) formattedEntry['Braços'] = entry.arms;
         if (entry.legs) formattedEntry['Pernas'] = entry.legs;
         return formattedEntry;
-      })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      });
   }, [data.bodyMeasurements]);
 
   const getReportsData = useCallback((timeframe: '30d' | '90d' | 'all'): ReportsData => {
@@ -514,7 +555,8 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     });
 
-    const exerciseProgress = data.workouts.flatMap(w => w.exercises.map(ex => {
+    // FIX: Explicitly type `w` to fix type inference issue inside `flatMap`.
+    const exerciseProgress = data.workouts.flatMap((w: Workout) => w.exercises.map(ex => {
         const historyInFrame = ex.loadHistory.filter(h => new Date(h.date) >= startDate);
         const startLoad = historyInFrame[0]?.load ?? ex.currentLoad;
         const currentLoad = ex.currentLoad;
@@ -533,42 +575,63 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   
   const getWeeklySummary = useCallback((): WeeklySummary => {
     const today = new Date();
-    const dayOfWeek = today.getDay();
+    const dayOfWeek = today.getDay(); // 0 for Sunday, 1 for Monday...
     const startDate = new Date(today);
-    startDate.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
+    startDate.setDate(today.getDate() - dayOfWeek); // Go back to Sunday
     startDate.setHours(0, 0, 0, 0);
 
     const weekAttendance = data.attendance.filter(dateStr => new Date(dateStr) >= startDate);
     
     let scheduledWorkoutsThisWeek = 0;
-    for (let i=0; i<7; i++) {
+    let minutesTrained = 0;
+    // FIX: Explicitly type `w` to fix type inference issue inside `map`.
+    const workoutMap = new Map(data.workouts.map((w: Workout) => [w.id, w]));
+
+    // Iterate through the days of the current week up to today
+    for (let i = 0; i <= dayOfWeek; i++) {
         const d = new Date(startDate);
         d.setDate(startDate.getDate() + i);
         const dateStr = d.toISOString().split('T')[0];
+        
         if (data.calendarSchedule[dateStr]) {
             scheduledWorkoutsThisWeek++;
         }
+
+        if (weekAttendance.includes(dateStr)) {
+            const workoutId = data.calendarSchedule[dateStr];
+            if (workoutId) {
+                const workout = workoutMap.get(workoutId);
+                if (workout) {
+                    // Estimate: average 7 mins per exercise
+                    minutesTrained += workout.exercises.length * 7;
+                }
+            } else {
+                // Attended but not scheduled. Use a fallback average.
+                minutesTrained += 45; 
+            }
+        }
     }
 
-    const minutesTrained = weekAttendance.length * 60;
-    const caloriesBurned = weekAttendance.length * 400;
+    const caloriesBurned = Math.round(minutesTrained * 7.5);
     
     return {
         workoutsCompleted: weekAttendance.length,
         workoutsScheduled: scheduledWorkoutsThisWeek,
-        minutesTrained,
+        minutesTrained: Math.round(minutesTrained),
         caloriesBurned
     };
-  }, [data.attendance, data.calendarSchedule]);
+  }, [data.attendance, data.calendarSchedule, data.workouts]);
   
   const getPreviousWeekSummary = useCallback((): WeeklySummary => {
       const today = new Date();
       const dayOfWeek = today.getDay();
 
+      // End date is last Saturday
       const endDate = new Date(today);
-      endDate.setDate(today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -7 : 0));
+      endDate.setDate(today.getDate() - dayOfWeek - 1);
       endDate.setHours(23, 59, 59, 999);
 
+      // Start date is Sunday of last week
       const startDate = new Date(endDate);
       startDate.setDate(endDate.getDate() - 6);
       startDate.setHours(0, 0, 0, 0);
@@ -579,25 +642,41 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       });
 
       let scheduledWorkouts = 0;
+      let minutesTrained = 0;
+      // FIX: Explicitly type `w` to fix type inference issue inside `map`.
+      const workoutMap = new Map(data.workouts.map((w: Workout) => [w.id, w]));
+
+      // Iterate through all 7 days of the previous week
       for (let i = 0; i < 7; i++) {
           const d = new Date(startDate);
           d.setDate(startDate.getDate() + i);
           const dateStr = d.toISOString().split('T')[0];
+          
           if (data.calendarSchedule[dateStr]) {
               scheduledWorkouts++;
           }
+          if (weekAttendance.includes(dateStr)) {
+              const workoutId = data.calendarSchedule[dateStr];
+              if (workoutId) {
+                  const workout = workoutMap.get(workoutId);
+                  if (workout) {
+                      minutesTrained += workout.exercises.length * 7;
+                  }
+              } else {
+                  minutesTrained += 45;
+              }
+          }
       }
 
-      const minutesTrained = weekAttendance.length * 60;
-      const caloriesBurned = weekAttendance.length * 400;
+      const caloriesBurned = Math.round(minutesTrained * 7.5);
 
       return {
           workoutsCompleted: weekAttendance.length,
           workoutsScheduled: scheduledWorkouts,
-          minutesTrained,
+          minutesTrained: Math.round(minutesTrained),
           caloriesBurned
       };
-  }, [data.attendance, data.calendarSchedule]);
+  }, [data.attendance, data.calendarSchedule, data.workouts]);
 
   const getLatestWeightEntries = useCallback((count = 5) => {
     return [...data.weightLog]
@@ -669,6 +748,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const value = { 
     data, 
     loading, 
+    initializeUser,
     addXP, 
     addWeightEntry, 
     updateExerciseLoad, 
@@ -701,6 +781,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     getRecentAchievements, 
     addWaterIntake, 
     getTodayWaterIntake, 
+    getWeeklyWaterIntake,
     isStreakAtRisk, 
     newlyUnlockedAchievement, 
     clearNewlyUnlockedAchievement, 
@@ -710,7 +791,7 @@ export const UserDataProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   return (
     <UserDataContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </UserDataContext.Provider>
   );
 };

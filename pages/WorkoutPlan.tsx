@@ -69,7 +69,7 @@ const WorkoutContents: React.FC<WorkoutContentsProps> = ({ workout }) => {
                           </span>
                       </span>
                     </p>
-                    <p className="text-sm text-brand-subtle dark:text-brand-subtle-dark ml-8">{ex.setsReps}</p>
+                    <p className="text-sm text-brand-subtle dark:text-brand-subtle-dark ml-8">{ex.sets}x{ex.reps}</p>
                   </div>
                   <div className="flex-shrink-0 text-right">
                     <p className="text-lg font-bold text-brand-primary">

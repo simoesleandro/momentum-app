@@ -28,6 +28,87 @@ const Input: React.FC<{ label: string; name: string; value: string; onChange: (e
     </div>
 );
 
+// =================================================================
+// Helper Component: Stepper Input
+// =================================================================
+const StepperInput: React.FC<{
+  label: string;
+  name: string;
+  value: string;
+  onChange: (e: { target: { name: string; value: string } }) => void;
+  step: number;
+  min?: number;
+  max?: number;
+  unit: string;
+  tooltip?: string;
+}> = ({ label, name, value, onChange, step, min = 0, max, unit, tooltip }) => {
+  
+  const handleStep = (direction: 'up' | 'down') => {
+    const currentValue = parseFloat(value) || 0;
+    let newValue = direction === 'up' ? currentValue + step : currentValue - step;
+    
+    if (newValue < min) newValue = min;
+    if (max !== undefined && newValue > max) newValue = max;
+    
+    const stringValue = step.toString().includes('.') ? newValue.toFixed(1) : newValue.toString();
+    onChange({ target: { name, value: stringValue } });
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange({ target: { name: e.target.name, value: e.target.value } });
+  };
+
+  return (
+    <div>
+      <label htmlFor={name} className="block text-sm font-medium text-brand-subtle dark:text-brand-subtle-dark mb-1 flex items-center gap-1">
+        <span>{label}</span>
+        {tooltip && (
+          <span className="relative group">
+            <i className="fas fa-info-circle text-xs cursor-help"></i>
+            <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-xs px-3 py-2 bg-gray-800 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
+              {tooltip}
+            </span>
+          </span>
+        )}
+      </label>
+      <div className="flex items-center mt-1">
+        <button
+          type="button"
+          onClick={() => handleStep('down')}
+          className="bg-brand-background dark:bg-brand-surface-dark border border-r-0 border-gray-300 dark:border-gray-600 font-semibold h-11 w-10 rounded-l-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary z-10 flex-shrink-0"
+          aria-label={`Diminuir ${label}`}
+        >
+          -
+        </button>
+        <div 
+            className="flex-1 bg-brand-background dark:bg-brand-surface-dark border-y border-gray-300 dark:border-gray-600 h-11 flex items-center px-2 group focus-within:ring-2 focus-within:ring-brand-primary focus-within:z-10 min-w-0"
+        >
+            <input
+                type="number"
+                id={name}
+                name={name}
+                value={value}
+                onChange={handleInputChange}
+                className="w-full text-center bg-transparent p-0 border-none focus:ring-0 text-lg font-medium text-brand-text dark:text-brand-text-dark appearance-none [-moz-appearance:textfield]"
+                placeholder="0"
+                step={step}
+                min={min}
+                max={max}
+            />
+        </div>
+        <button
+          type="button"
+          onClick={() => handleStep('up')}
+          className="bg-brand-background dark:bg-brand-surface-dark border border-l-0 border-gray-300 dark:border-gray-600 font-semibold h-11 w-10 rounded-r-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-primary z-10 flex-shrink-0"
+          aria-label={`Aumentar ${label}`}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+};
+
 
 // =================================================================
 // Helper Component: Photo Modal
@@ -213,7 +294,7 @@ const BodyMeasurementsTab: React.FC = () => {
         }
     };
     
-    const handleCalculatorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleCalculatorChange = (e: React.ChangeEvent<HTMLInputElement> | { target: { name: string; value: string } }) => {
         setCalculator(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
@@ -301,7 +382,8 @@ const BodyMeasurementsTab: React.FC = () => {
                 setCalculatorError('A soma da cintura e do quadril deve ser maior que a medida do pescoço.');
                 return;
             }
-            result = 495 / (1.29579 - 0.35004 * Math.log10(circumferenceValue) + 0.22100 * Math.log10(height)) - 450;
+            // US Navy formula (Hodgdon & Beckett) - more robust for different body types
+            result = 163.205 * Math.log10(circumferenceValue) - 97.684 * Math.log10(height) - 78.387;
         } else {
             if (!waist || !neck || !height) { setCalculatorError('Preencha todos os campos para o sexo masculino.'); return; }
 
@@ -310,10 +392,11 @@ const BodyMeasurementsTab: React.FC = () => {
                 setCalculatorError('A medida do abdómen deve ser maior que a do pescoço.');
                 return;
             }
-            result = 495 / (1.0324 - 0.19077 * Math.log10(circumferenceValue) + 0.15456 * Math.log10(height)) - 450;
+            // US Navy formula (Hodgdon & Beckett) - for consistency and robustness
+            result = 86.010 * Math.log10(circumferenceValue) - 70.041 * Math.log10(height) + 36.76;
         }
 
-        if (result !== null && result > 0) {
+        if (result !== null && result > 0 && result < 70) {
             setBodyFatResult(result);
             setBodyFatCategory(getBodyFatCategory(result, gender, age));
         } else {
@@ -354,33 +437,90 @@ const BodyMeasurementsTab: React.FC = () => {
                                 <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="gender" value="female" checked={calculator.gender === 'female'} onChange={handleCalculatorChange} className="form-radio text-brand-primary" /> Feminino</label>
                                 <label className="flex items-center gap-2 cursor-pointer"><input type="radio" name="gender" value="male" checked={calculator.gender === 'male'} onChange={handleCalculatorChange} className="form-radio text-brand-primary" /> Masculino</label>
                             </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <Input label="Idade" name="age" value={calculator.age} onChange={handleCalculatorChange} placeholder="Anos" />
-                                <Input 
-                                    label="Pescoço (cm)" 
-                                    name="neck" 
-                                    value={calculator.neck} 
-                                    onChange={handleCalculatorChange} 
+                            <div className="grid grid-cols-2 gap-4">
+                                <StepperInput
+                                    label="Idade (anos)"
+                                    name="age"
+                                    value={calculator.age}
+                                    onChange={handleCalculatorChange}
+                                    step={1}
+                                    min={15}
+                                    max={99}
+                                    unit="anos"
+                                />
+                                <StepperInput
+                                    label="Pescoço (cm)"
+                                    name="neck"
+                                    value={calculator.neck}
+                                    onChange={handleCalculatorChange}
+                                    step={0.5}
+                                    min={20}
+                                    max={60}
+                                    unit="cm"
                                     tooltip="Meça na parte mais larga do pescoço."
                                 />
-                                <Input 
-                                    label={calculator.gender === 'female' ? "Cintura (cm)" : "Abdómen (cm)"}
-                                    name="waist" 
-                                    value={calculator.waist} 
-                                    onChange={handleCalculatorChange} 
-                                    tooltip={calculator.gender === 'female' ? "Meça na parte mais estreita, geralmente acima do umbigo." : "Meça horizontalmente, ao nível do umbigo."}
-                                />
-                                {calculator.gender === 'female' && (
-                                    <Input 
-                                        label="Quadril (cm)" 
-                                        name="hips" 
-                                        value={calculator.hips} 
-                                        onChange={handleCalculatorChange}
-                                        tooltip="Meça na parte mais larga dos glúteos."
-                                    />
+
+                                {calculator.gender === 'female' ? (
+                                    <>
+                                        <StepperInput
+                                            label="Cintura (cm)"
+                                            name="waist"
+                                            value={calculator.waist}
+                                            onChange={handleCalculatorChange}
+                                            step={0.5}
+                                            min={50}
+                                            max={150}
+                                            unit="cm"
+                                            tooltip="Meça na parte mais estreita, geralmente acima do umbigo."
+                                        />
+                                         <StepperInput
+                                            label="Quadril (cm)"
+                                            name="hips"
+                                            value={calculator.hips}
+                                            onChange={handleCalculatorChange}
+                                            step={0.5}
+                                            min={70}
+                                            max={170}
+                                            unit="cm"
+                                            tooltip="Meça na parte mais larga dos glúteos."
+                                        />
+                                    </>
+                                ) : (
+                                    <div className="col-span-2">
+                                        <StepperInput
+                                            label="Abdómen (cm)"
+                                            name="waist"
+                                            value={calculator.waist}
+                                            onChange={handleCalculatorChange}
+                                            step={0.5}
+                                            min={50}
+                                            max={150}
+                                            unit="cm"
+                                            tooltip="Meça horizontalmente, ao nível do umbigo."
+                                        />
+                                    </div>
                                 )}
-                                <Input label="Altura (cm)" name="height" value={calculator.height} onChange={handleCalculatorChange} />
-                                <Input label="Peso (Kg)" name="weight" value={calculator.weight} onChange={handleCalculatorChange} />
+                                
+                                <StepperInput
+                                    label="Altura (cm)"
+                                    name="height"
+                                    value={calculator.height}
+                                    onChange={handleCalculatorChange}
+                                    step={1}
+                                    min={100}
+                                    max={250}
+                                    unit="cm"
+                                />
+                                <StepperInput
+                                    label="Peso (kg)"
+                                    name="weight"
+                                    value={calculator.weight}
+                                    onChange={handleCalculatorChange}
+                                    step={0.1}
+                                    min={30}
+                                    max={200}
+                                    unit="kg"
+                                />
                             </div>
                             <div className="flex gap-2 pt-1">
                                 <button onClick={calculateBodyFat} className="w-full bg-brand-primary text-white font-bold py-2 px-4 rounded-md hover:bg-brand-primary-dark transition-colors">Calcular</button>

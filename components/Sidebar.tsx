@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Page } from '../types';
-import { HomeIcon, DumbbellIcon, CalendarIcon, CalendarCheckIcon, ProgressIcon, BookOpenIcon, LibraryIcon, ChartBarIcon, SettingsIcon, TrophyIcon } from './icons';
+import { HomeIcon, DumbbellIcon, CalendarIcon, CalendarCheckIcon, ProgressIcon, BookOpenIcon, LibraryIcon, ChartBarIcon, SettingsIcon, TrophyIcon, LogoutIcon } from './icons';
 import { useUserData } from '../hooks/useUserData';
 import EditProfileModal from './EditProfileModal';
 import { getXPForNextLevel } from '../data/gamification';
@@ -35,7 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isStreak
   return (
     <>
       <aside className="hidden md:flex flex-col w-64 bg-brand-surface dark:bg-brand-surface-dark text-brand-text dark:text-brand-text-dark p-4 border-r border-gray-200 dark:border-gray-700">
-        <div className="flex flex-col items-center p-4 mb-6 text-center">
+        <div className="flex flex-col items-center p-4 my-6 text-center">
           <div className="relative">
             <img
               src={data.profilePictureUrl}
@@ -66,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isStreak
               </div>
           </div>
         </div>
-        <nav className="flex flex-col space-y-2">
+        <nav className="flex-grow flex flex-col space-y-2">
           {navItems.map((item) => {
             const isAttendance = item.name === 'Assiduidade';
             return (

@@ -106,7 +106,7 @@ const WorkoutSummary: React.FC<WorkoutSummaryProps> = ({ workout, elapsedTime, c
                         <li key={ex.id} className="flex items-center justify-between p-3 bg-brand-background dark:bg-brand-background-dark/50 rounded-md">
                             <div>
                                 <p className={`font-medium ${!isCompleted ? 'text-brand-subtle' : 'text-brand-text dark:text-brand-text-dark'}`}>{ex.name}</p>
-                                <p className="text-sm text-brand-subtle">{ex.setsReps} @ {ex.currentLoad.toFixed(1)} kg</p>
+                                <p className="text-sm text-brand-subtle">{ex.sets}x{ex.reps} @ {ex.currentLoad.toFixed(1)} kg</p>
                             </div>
                             {isCompleted ? (
                                 <i className="fas fa-check-circle text-green-500 text-xl"></i>

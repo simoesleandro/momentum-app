@@ -139,9 +139,20 @@ export const ACHIEVEMENTS: Achievement[] = [
         icon: 'fas fa-bullseye',
         xpReward: 300,
         isUnlocked: (data) => {
-            if (data.weightLog.length === 0) return false;
-            const currentWeight = data.weightLog[data.weightLog.length - 1].weight;
-            return currentWeight <= data.goalWeight;
+            // This achievement should only be unlocked after the user has started their journey,
+            // so we require at least one weight entry after the initial one.
+            if (data.weightLog.length < 2) {
+                return false;
+            }
+
+            const currentWeight = [...data.weightLog].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].weight;
+            const goalIsToLose = data.initialWeight > data.goalWeight;
+
+            if (goalIsToLose) {
+                return currentWeight <= data.goalWeight;
+            } else {
+                return currentWeight >= data.goalWeight;
+            }
         }
     },
     {
